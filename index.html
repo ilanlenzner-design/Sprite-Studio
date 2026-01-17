@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sprite Studio | Pro Video Converter</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <?!= include('Styles'); ?>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🎬 Sprite Studio</h1>
+            <p>Professional Hybrid Registration & Video Conversion</p>
+        </header>
+
+        <div class="glass-card">
+            <div class="studio-layout">
+                <!-- Unified Sidebar -->
+                <aside class="studio-sidebar" id="unified-sidebar">
+
+                    <!-- Pack 1: Media Source (Always Visible) -->
+                    <div class="control-pack">
+                        <div class="pack-header">Source Media</div>
+                        <div class="action-footer" style="padding-top: 0;">
+                            <button id="import-media-btn" class="btn btn-pro-primary" style="width:100%"
+                                onclick="document.getElementById('video-input').click()">📁 Open File</button>
+                        </div>
+                    </div>
+
+                    <!-- Pack 2: Capture Settings (Video Logic) -->
+                    <div id="capture-settings-pack" class="control-pack collapsible">
+                        <div class="pack-header">Capture Settings</div>
+                        <div class="pack-content">
+                            <div class="control-group">
+                                <div class="slider-group">
+                                    <div class="slider-header">
+                                        <span>Capture Stride</span>
+                                        <input type="number" id="stride-val" class="slider-input" value="1" min="1"
+                                            max="60">
+                                    </div>
+                                    <input type="range" id="frame-interval" class="studio-slider" min="1" max="60"
+                                        value="1">
+                                </div>
+                                <div class="metadata-item"
+                                    style="margin-top:8px; font-size:10px; opacity:0.5; font-style: italic;">
+                                    (1 = Every frame, 5 = Every 5th, etc.)
+                                </div>
+                            </div>
+                            <!-- Sheet Output (Pre-Studio) -->
+                            <div class="control-group" style="margin-top:10px;">
+                                <div class="slider-group">
+                                    <div class="slider-header"><span>Output Scale</span> <input type="number"
+                                            id="sprite-scale-val" class="slider-input" value="100" min="25" max="400">%
+                                    </div>
+                                    <input type="range" id="sprite-output-scale" class="studio-slider" min="25"
+                                        max="400" value="100" step="5">
+                                </div>
+                            </div>
+
+                            <button id="generate-sprite-btn" class="btn btn-pro-primary"
+                                style="width:100%; margin-top: 15px;">⚡ Generate Sprite Sheet</button>
+                        </div>
+                    </div>
+
+                    <!-- Pack 3: Studio Core (Grid & Island) -->
+                    <div id="studio-core-pack" class="control-pack collapsible">
+                        <div class="pack-header">Studio Configuration</div>
+                        <div class="pack-content">
+                            <div class="mode-pack" style="margin-bottom: 12px;">
+                                <div class="mode-toggle">
+                                    <button class="mode-btn active" id="mode-grid-btn">GRID</button>
+                                    <button class="mode-btn" id="mode-island-btn">ISLAND</button>
+                                </div>
+                            </div>
+
+                            <div id="grid-controls">
+                                <div class="control-row">
+                                    <div class="slider-group">
+                                        <div class="slider-header"><span>Cols</span> <input type="number" id="col-val"
+                                                class="slider-input" value="4" min="1" max="100"></div>
+                                        <input type="range" id="grid-columns" class="studio-slider" min="1" max="100"
+                                            value="4">
+                                    </div>
+                                    <div class="slider-group">
+                                        <div class="slider-header"><span>Rows</span> <input type="number" id="row-val"
+                                                class="slider-input" value="1" min="1" max="100"></div>
+                                        <input type="range" id="grid-rows" class="studio-slider" min="1" max="100"
+                                            value="1">
+                                    </div>
+                                </div>
+                                <div class="control-row" style="margin-top:10px;">
+                                    <div class="slider-group">
+                                        <div class="slider-header"><span style="flex:1;">Offset X</span>
+                                            <div class="nudge-group">
+                                                <button class="nudge-btn" data-axis="x" data-dir="-1">-</button>
+                                                <input type="number" id="offx-val" class="slider-input" value="0">
+                                                <button class="nudge-btn" data-axis="x" data-dir="1">+</button>
+                                            </div>
+                                        </div>
+                                        <input type="range" id="grid-offset-x" class="studio-slider" min="0" max="2000"
+                                            value="0">
+                                    </div>
+                                    <div class="slider-group">
+                                        <div class="slider-header"><span style="flex:1;">Offset Y</span>
+                                            <div class="nudge-group">
+                                                <button class="nudge-btn" data-axis="y" data-dir="-1">-</button>
+                                                <input type="number" id="offy-val" class="slider-input" value="0">
+                                                <button class="nudge-btn" data-axis="y" data-dir="1">+</button>
+                                            </div>
+                                        </div>
+                                        <input type="range" id="grid-offset-y" class="studio-slider" min="0" max="2000"
+                                            value="0">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="island-controls" style="display: none;">
+                                <div class="slider-group">
+                                    <div class="slider-header"><span>Alpha Sensitivity</span> <input type="number"
+                                            id="thresh-val" class="slider-input" value="50"></div>
+                                    <input type="range" id="island-threshold" class="studio-slider" min="1" max="255"
+                                        value="50">
+                                </div>
+                            </div>
+
+                            <button id="auto-detect-btn" class="btn btn-pro-outline"
+                                style="width:100%; margin-top: 15px; font-size: 11px;">🧠 Auto-Detect Grid (AI)</button>
+                        </div>
+                    </div>
+
+                    <!-- Pack 4: Adjustments (Filters, Centering, BG Removal) -->
+                    <div id="studio-adjustments-pack" class="control-pack collapsible collapsed">
+                        <div class="pack-header">Visuals & Centering</div>
+                        <div class="pack-content">
+                            <div class="control-group">
+                                <label class="control-label">Alignment Pivot</label>
+                                <select id="normalize-anchor" class="control-input">
+                                    <option value="center">Center-Center</option>
+                                    <option value="bottom">Bottom-Center</option>
+                                </select>
+                            </div>
+                            <div class="control-group" style="margin-top:12px;">
+                                <label class="control-label" style="display:flex; align-items:center; gap:8px;">
+                                    <input type="checkbox" id="remove-bg-toggle" style="width:auto;">
+                                    <span>Remove Background</span>
+                                </label>
+                                <button id="preview-bg-btn" class="btn btn-pro-outline"
+                                    style="width:100%; font-size:10px; margin-top:8px;" disabled>
+                                    👁️ Preview Background Removal
+                                </button>
+
+                                <!-- BG Removal Method -->
+                                <div id="bg-method-selector" style="margin-top:10px; display:none;">
+                                    <label class="control-label" style="font-size:10px; opacity:0.7;">Method</label>
+                                    <select id="bg-removal-method" class="control-input" style="font-size:10px;">
+                                        <option value="smart">✓ Smart Detect (Auto)</option>
+                                        <option value="chroma">Chroma Key (Color)</option>
+                                        <option value="alpha">Alpha Threshold</option>
+                                    </select>
+
+                                    <!-- Chroma Key Color Picker -->
+                                    <div id="chroma-color-picker" style="margin-top:12px; display:none;">
+                                        <div style="background:rgba(0,0,0,0.3); padding:12px; border-radius:8px;">
+                                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                                                <div id="color-preview"
+                                                    style="width:40px; height:40px; border-radius:50%; background:#00ff00; border:2px solid rgba(255,255,255,0.2);">
+                                                </div>
+                                                <input type="color" id="color-picker-input" value="#00ff00"
+                                                    style="flex:1; height:40px; border:none; border-radius:6px; cursor:pointer; min-width:0;">
+                                            </div>
+                                            <div
+                                                style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-top:8px;">
+                                                <div>
+                                                    <label
+                                                        style="font-size:9px; opacity:0.6; display:block; text-align:center;">R</label>
+                                                    <input type="number" id="chroma-r" min="0" max="255" value="0"
+                                                        class="control-input"
+                                                        style="text-align:center; font-size:11px; padding:4px;">
+                                                </div>
+                                                <div>
+                                                    <label
+                                                        style="font-size:9px; opacity:0.6; display:block; text-align:center;">G</label>
+                                                    <input type="number" id="chroma-g" min="0" max="255" value="255"
+                                                        class="control-input"
+                                                        style="text-align:center; font-size:11px; padding:4px;">
+                                                </div>
+                                                <div>
+                                                    <label
+                                                        style="font-size:9px; opacity:0.6; display:block; text-align:center;">B</label>
+                                                    <input type="number" id="chroma-b" min="0" max="255" value="0"
+                                                        class="control-input"
+                                                        style="text-align:center; font-size:11px; padding:4px;">
+                                                </div>
+                                            </div>
+                                            <div style="margin-top:12px;">
+                                                <div class="slider-header">
+                                                    <span style="font-size:10px;">Tolerance</span>
+                                                    <input type="number" id="chroma-tolerance-val" class="slider-input"
+                                                        value="30" min="0" max="100" style="font-size:10px;">
+                                                </div>
+                                                <input type="range" id="chroma-tolerance" class="studio-slider" min="0"
+                                                    max="100" value="30">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Alpha Threshold Slider -->
+                                    <div id="alpha-threshold-control" style="margin-top:12px; display:none;">
+                                        <div class="slider-header">
+                                            <span style="font-size:10px;">Threshold</span>
+                                            <input type="number" id="alpha-threshold-val" class="slider-input"
+                                                value="128" min="0" max="255" style="font-size:10px;">
+                                        </div>
+                                        <input type="range" id="alpha-threshold" class="studio-slider" min="0" max="255"
+                                            value="128">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Visual Adjustments -->
+                            <div class="control-group" style="margin-top:20px;">
+                                <div class="slider-group">
+                                    <div class="slider-header"><span>Brightness</span> <input type="number"
+                                            id="brightness-val" class="slider-input" value="0" min="-100" max="100">
+                                    </div>
+                                    <input type="range" id="brightness-slider" class="studio-slider" min="-100"
+                                        max="100" value="0">
+                                </div>
+                                <div class="slider-group" style="margin-top:10px;">
+                                    <div class="slider-header"><span>Contrast</span> <input type="number"
+                                            id="contrast-val" class="slider-input" value="0" min="-100" max="100"></div>
+                                    <input type="range" id="contrast-slider" class="studio-slider" min="-100" max="100"
+                                        value="0">
+                                </div>
+                                <div class="slider-group" style="margin-top:10px;">
+                                    <div class="slider-header"><span>Saturation</span> <input type="number"
+                                            id="satur-val" class="slider-input" value="0" min="-100" max="100"></div>
+                                    <input type="range" id="saturation-slider" class="studio-slider" min="-100"
+                                        max="100" value="0">
+                                </div>
+                            </div>
+
+                            <div class="control-group" style="margin-top:15px;">
+                                <label class="control-label">Rotation & Flip</label>
+                                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px;">
+                                    <button id="rotate-90" class="btn btn-pro-outline"
+                                        style="font-size:9px; padding:8px;">↻ 90°</button>
+                                    <button id="flip-h" class="btn btn-pro-outline"
+                                        style="font-size:9px; padding:8px;">↔ H</button>
+                                    <button id="flip-v" class="btn btn-pro-outline"
+                                        style="font-size:9px; padding:8px;">↕ V</button>
+                                </div>
+                            </div>
+
+                            <div class="control-group" style="margin-top:15px;">
+                                <label class="control-label">Quick Filters</label>
+                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+                                    <button id="filter-grayscale" class="btn btn-pro-outline"
+                                        style="font-size:9px; padding:8px;">BW</button>
+                                    <button id="filter-invert" class="btn btn-pro-outline"
+                                        style="font-size:9px; padding:8px;">Invert</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pack 5: Global Export -->
+                    <div id="export-pack" class="control-pack">
+                        <div class="pack-header">Export Suite</div>
+                        <div class="control-group">
+                            <label class="control-label">Final Format</label>
+                            <select id="sprite-format" class="control-input">
+                                <option value="png">PNG (Lossless)</option>
+                                <option value="jpg">JPEG (Compressed)</option>
+                                <option value="webp">WebP (Optimized)</option>
+                            </select>
+                        </div>
+                        <div class="control-group" style="margin-top:12px;">
+                            <label class="control-label">Image Quality</label>
+                            <select id="sprite-quality" class="control-input">
+                                <option value="1.0">High (100%)</option>
+                                <option value="0.95" selected>High (95%)</option>
+                                <option value="0.90">Good (90%)</option>
+                                <option value="0.80">Medium (80%)</option>
+                                <option value="0.70">Low (70%)</option>
+                            </select>
+                        </div>
+                        <div class="action-footer">
+                            <button id="download-sprite-btn" class="btn btn-pro-secondary" style="width:100%">⬇️
+                                Download Production asset</button>
+                        </div>
+                    </div>
+
+                    <!-- HUD Progress (Floating in sidebar) -->
+                    <div id="sprite-progress" class="hud-progress" style="display: none; margin-top: auto;">
+                        <div class="hud-label">Rendering Status...</div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar" style="width: 0%;"></div>
+                        </div>
+                    </div>
+
+                </aside>
+
+                <!-- Unified Workspace Area -->
+                <main class="studio-main" id="studio-main">
+
+                    <!-- Shared Zoom Control -->
+                    <div class="zoom-controls">
+                        <button id="zoom-toggle-btn" class="btn-icon">🔍 Fit</button>
+                        <input type="range" id="zoom-slider" class="zoom-slider" min="0.1" max="5" step="0.1" value="1">
+                        <span id="zoom-val" class="zoom-label">100%</span>
+                    </div>
+
+                    <!-- Unified File Logic (Hidden Inputs) -->
+                    <input type="file" id="video-input" class="file-input" accept="video/*,image/*">
+                    <input type="file" id="sprite-input" class="file-input" accept="image/*">
+
+                    <!-- Welcome Slot / Dropzone (Shown when empty) -->
+                    <div id="studio-dropzone" class="dropzone">
+                        <div class="dropzone-icon">🎞️</div>
+                        <div class="dropzone-text">Drop Media Here</div>
+                        <div class="dropzone-subtext">Supports Video, PNG, or Sprite Sheets</div>
+                    </div>
+
+                    <!-- Interactive viewport -->
+                    <div class="interactive-canvas-container" id="canvas-container" style="display:none;">
+                        <div class="canvas-wrapper" id="studio-canvas-wrapper">
+                            <!-- Previews for Video/Single Images -->
+                            <video id="video-preview-el" style="display:none;"></video>
+                            <img id="image-preview-el" style="display:none;">
+                            <canvas id="sprite-preview" class="preview-canvas" style="display:none;"></canvas>
+
+                            <!-- Production Studio Canvas -->
+                            <canvas id="source-canvas"></canvas>
+                            <canvas id="overlay-layer" class="overlay-layer"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- HUD PIP Preview -->
+                    <div class="pip-preview" id="pip-container" style="display:none;">
+                        <div class="pip-label">Playback Preview</div>
+                        <canvas id="pip-canvas" class="pip-canvas"></canvas>
+                    </div>
+
+                </main>
+            </div>
+        </div>
+    </div>
+
+    <?!= include('Studio'); ?>
+</body>
+
+</html>

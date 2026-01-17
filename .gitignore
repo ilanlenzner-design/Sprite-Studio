@@ -1,0 +1,6 @@
+local-dev.html
+*.backup
+*.png
+.DS_Store
+node_modules/
+dist/

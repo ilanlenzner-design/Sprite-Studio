@@ -106,6 +106,8 @@
                 colLabel: id('col-val'),
                 gridRows: id('grid-rows'),
                 rowLabel: id('row-val'),
+                frameCountSlider: id('frame-count-slider'),
+                frameCountVal: id('frame-count-val'),
                 offX: id('grid-offset-x'),
                 offXLabel: id('offx-val'),
                 offY: id('grid-offset-y'),
@@ -184,6 +186,20 @@
             this.sync(this.els.gridRows, this.els.rowLabel, 'rows');
             this.sync(this.els.offX, this.els.offXLabel, 'offsetX');
             this.sync(this.els.offY, this.els.offYLabel, 'offsetY');
+
+            if (this.els.frameCountSlider) {
+                this.els.frameCountSlider.oninput = (e) => {
+                    this.state.frameCount = parseInt(e.target.value);
+                    if (this.els.frameCountVal) this.els.frameCountVal.value = e.target.value;
+                };
+            }
+            if (this.els.frameCountVal) {
+                this.els.frameCountVal.oninput = (e) => {
+                    const val = parseInt(e.target.value) || 0;
+                    this.state.frameCount = val;
+                    if (this.els.frameCountSlider) this.els.frameCountSlider.value = val;
+                };
+            }
 
             if (this.els.thresholdSlider) {
                 this.els.thresholdSlider.oninput = (e) => {
@@ -324,13 +340,21 @@
                 btn.onclick = (e) => {
                     const axis = e.currentTarget.dataset.axis;
                     const dir = parseInt(e.currentTarget.dataset.dir);
-                    const key = axis === 'x' ? 'offsetX' : 'offsetY';
-                    const slider = axis === 'x' ? this.els.offX : this.els.offY;
-                    const input = axis === 'x' ? this.els.offXLabel : this.els.offYLabel;
 
-                    this.state[key] = Math.max(0, this.state[key] + dir);
-                    if (slider) slider.value = this.state[key];
-                    if (input) input.value = this.state[key];
+                    switch (axis) {
+                        case 'x':
+                            this.state.offsetX = Math.max(0, this.state.offsetX + dir);
+                            this.els.offX.value = this.els.offXLabel.value = this.state.offsetX;
+                            break;
+                        case 'y':
+                            this.state.offsetY = Math.max(0, this.state.offsetY + dir);
+                            this.els.offY.value = this.els.offYLabel.value = this.state.offsetY;
+                            break;
+                        case 'f':
+                            this.state.frameCount = Math.max(0, (this.state.frameCount || 0) + dir);
+                            this.els.frameCountSlider.value = this.els.frameCountVal.value = this.state.frameCount;
+                            break;
+                    }
                     this.refresh();
                 };
             });
@@ -390,7 +414,7 @@
                 this.setWorkflow('studio');
                 const img = await this.loadImage(this.state.mediaUrl);
                 this.state.media = img;
-                this.state.frameCount = 0; // Reset for imported images
+                this.state.frameCount = 0; // Default
                 this.setupStudio(img);
             }
 
@@ -956,6 +980,15 @@
                         this.state.frames.push({ x: fx, y: fy, w: fw, h: fh });
                     }
                 }
+                // Auto-update frame count boundary if it was 0 or larger than new total
+                const total = this.state.frames.length;
+                if (!this.state.frameCount || this.state.frameCount > total) {
+                    this.state.frameCount = total;
+                }
+                this.els.frameCountSlider.max = total;
+                this.els.frameCountVal.max = total;
+                this.els.frameCountSlider.value = this.state.frameCount;
+                this.els.frameCountVal.value = this.state.frameCount;
             } else {
                 this.calculateIslandFrames();
             }
@@ -964,6 +997,14 @@
         async calculateIslandFrames() {
             const results = await this.findIslands(this.els.sourceCanvas, this.state.threshold);
             this.state.frames = results;
+            const total = this.state.frames.length;
+            if (!this.state.frameCount || this.state.frameCount > total) {
+                this.state.frameCount = total;
+            }
+            this.els.frameCountSlider.max = total;
+            this.els.frameCountVal.max = total;
+            this.els.frameCountSlider.value = this.state.frameCount;
+            this.els.frameCountVal.value = this.state.frameCount;
             this.drawOverlays();
         }
 
@@ -1040,7 +1081,7 @@
                     return;
                 }
 
-                const totalFrames = this.state.frameCount || this.state.frames.length;
+                const totalFrames = this.state.frameCount || 1;
                 if (this.state.activeFrameIdx >= totalFrames) {
                     this.state.activeFrameIdx = 0;
                 }
@@ -1174,7 +1215,7 @@
         }
 
         downloadSpriteSheet() {
-            if (!this.state.img) return toast("No sprite sheet loaded");
+            if (!this.state.media) return toast("No sprite sheet loaded");
 
             try {
                 // Apply output scale
@@ -1327,179 +1368,6 @@
         }
 
         async exportProduction() {
-            this.studio = studioInstance;
-            this.els = {
-                dropzone: document.getElementById('video-dropzone'),
-                input: document.getElementById('video-input'),
-                generateBtn: document.getElementById('generate-sprite-btn'),
-                downloadBtn: document.getElementById('download-sprite-btn'),
-                preview: document.getElementById('sprite-preview'),
-                interval: document.getElementById('frame-interval'),
-                strideLabel: document.getElementById('stride-val'),
-                // Output settings
-                outputScale: document.getElementById('sprite-output-scale'),
-                scaleLabel: document.getElementById('sprite-scale-val'),
-                format: document.getElementById('sprite-format'),
-                quality: document.getElementById('sprite-quality'),
-                canvasContainer: document.getElementById('video-canvas-container'),
-                canvasWrapper: document.getElementById('video-canvas-wrapper'),
-                videoPreview: document.getElementById('video-preview-el'),
-                imagePreview: document.getElementById('image-preview-el'),
-                zoomBtn: document.getElementById('video-zoom-toggle-btn'),
-                zoomSlider: document.getElementById('video-zoom-slider'),
-                zoomVal: document.getElementById('video-zoom-val')
-            };
-            this.fitMode = true;
-            this.outputSettings = {
-                scale: 100,
-                format: 'png',
-                quality: 0.95
-            };
-            this.initEvents();
-        }
-
-
-        toggleFit() {
-            this.fitMode = !this.fitMode;
-            if (this.els.canvasContainer) {
-                this.els.canvasContainer.style.display = 'flex';
-                this.els.canvasContainer.classList.toggle('fit-mode', this.fitMode);
-            }
-            if (this.els.zoomBtn) {
-                this.els.zoomBtn.textContent = this.fitMode ? '🔍 1:1' : '🔍 Fit';
-            }
-            if (this.fitMode) {
-                if (this.els.zoomSlider) this.els.zoomSlider.value = 1;
-                if (this.els.zoomVal) this.els.zoomVal.textContent = "Auto";
-                if (this.els.canvasWrapper) {
-                    this.els.canvasWrapper.style.transform = 'none';
-                }
-                if (this.els.videoPreview) this.els.videoPreview.style.width = 'auto';
-                if (this.els.imagePreview) this.els.imagePreview.style.width = 'auto';
-            } else {
-                if (this.els.canvasContainer) this.els.canvasContainer.style.display = 'block';
-            }
-        }
-
-        applyZoom(val) {
-            this.fitMode = false;
-            if (this.els.canvasContainer) {
-                this.els.canvasContainer.classList.remove('fit-mode');
-                this.els.canvasContainer.style.display = 'block';
-            }
-            if (this.els.zoomBtn) this.els.zoomBtn.textContent = '🔍 Fit';
-
-            const pct = Math.round(val * 100);
-            if (this.els.zoomVal) this.els.zoomVal.textContent = `${pct}%`;
-
-            if (this.els.canvasWrapper) {
-                this.els.canvasWrapper.style.transform = `scale(${val})`;
-                this.els.canvasWrapper.style.width = 'auto';
-            }
-
-            if (this.els.videoPreview) {
-                const baseW = this.els.videoPreview.videoWidth;
-                if (baseW > 0) {
-                    this.els.videoPreview.style.width = baseW + 'px';
-                }
-            }
-            if (this.els.imagePreview) {
-                const baseW = this.els.imagePreview.naturalWidth;
-                if (baseW > 0) {
-                    this.els.imagePreview.style.width = baseW + 'px';
-                }
-            }
-        }
-
-        async captureVideo() {
-            console.log('[captureVideo] Called - Workflow:', this.state.workflow, 'VideoSrc:', this.els.videoPreview.src);
-            if (this.state.workflow !== 'capture') {
-                console.warn('[captureVideo] Blocked: workflow is not capture');
-                toast('Please upload a video first');
-                return;
-            }
-            if (!this.els.videoPreview.src) {
-                console.warn('[captureVideo] Blocked: no video source');
-                toast('No video loaded');
-                return;
-            }
-
-            this.els.generateBtn.disabled = true;
-            this.els.generateBtn.textContent = "⚡ Processing...";
-
-            try {
-                const video = document.createElement('video');
-                video.src = this.els.videoPreview.src;
-                video.muted = true;
-                await new Promise((res, rej) => {
-                    video.onloadedmetadata = res;
-                    video.onerror = rej;
-                    setTimeout(() => rej(new Error("Timeout loading video")), 5000);
-                });
-
-                const interval = Math.max(1, parseInt(this.els.strideSlider.value));
-                const frames = [];
-                const vw = video.videoWidth;
-                const vh = video.videoHeight;
-                const duration = video.duration;
-                const step = (interval / 30); // Approx 30fps base
-
-                for (let t = 0; t < duration; t += step) {
-                    video.currentTime = t;
-                    await new Promise(r => video.onseeked = r);
-
-                    const fcvs = document.createElement('canvas');
-                    fcvs.width = vw; fcvs.height = vh;
-                    fcvs.getContext('2d').drawImage(video, 0, 0);
-                    frames.push(fcvs);
-
-                    const pct = Math.floor((t / duration) * 100);
-                    this.els.generateBtn.textContent = `⚡ Capturing ${pct}%...`;
-                    if (frames.length > 300) break; // Safety limit
-                }
-
-                if (!frames.length) throw new Error("No frames captured");
-
-                // Layout onto master canvas
-                const cols = Math.ceil(Math.sqrt(frames.length));
-                const rows = Math.ceil(frames.length / cols);
-                const scale = (parseInt(this.els.capScaleSlider?.value || 100)) / 100;
-                const sw = Math.round(vw * scale);
-                const sh = Math.round(vh * scale);
-
-                const master = document.createElement('canvas');
-                master.width = cols * sw;
-                master.height = rows * sh;
-                const mctx = master.getContext('2d');
-
-                frames.forEach((f, i) => {
-                    const x = (i % cols) * sw;
-                    const y = Math.floor(i / cols) * sh;
-                    mctx.drawImage(f, 0, 0, vw, vh, x, y, sw, sh);
-                });
-
-                // Transition to Studio
-                const img = await this.loadImage(master.toDataURL('image/png'));
-                this.state.media = img;
-                this.state.cols = cols;
-                this.state.rows = rows;
-                this.els.gridCols.value = this.els.colLabel.value = cols;
-                this.els.gridRows.value = this.els.rowLabel.value = rows;
-
-                this.setWorkflow('studio');
-                this.setupStudio(img);
-                toast("Sequence Captured!", "success");
-
-            } catch (err) {
-                console.error(err);
-                toast("Capture Failed: " + err.message);
-            } finally {
-                this.els.generateBtn.disabled = false;
-                this.els.generateBtn.textContent = "⚡ Generate Sprite Sheet";
-            }
-        }
-
-        async exportProduction() {
             if (!this.state.media) return toast("Nothing to export");
 
             try {
@@ -1514,7 +1382,7 @@
                 // Background Removal if active
                 if (this.state.adjustments.removeBg) {
                     const idata = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                    // Using smart detect by default for export if not specified
+                    // Use smart detection for export
                     const processed = this.smartDetect(idata);
                     ctx.putImageData(processed, 0, 0);
                 }

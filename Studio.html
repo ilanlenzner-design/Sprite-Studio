@@ -980,11 +980,22 @@
                         this.state.frames.push({ x: fx, y: fy, w: fw, h: fh });
                     }
                 }
-                // Auto-update frame count boundary if it was 0 or larger than new total
-                const total = this.state.frames.length;
-                if (!this.state.frameCount || this.state.frameCount > total) {
-                    this.state.frameCount = total;
+                // Auto-trim: find last non-empty frame
+                let lastValid = 0;
+                for (let i = 0; i < this.state.frames.length; i++) {
+                    if (!this.isFrameEmpty(this.state.frames[i])) {
+                        lastValid = i + 1;
+                    }
                 }
+
+                // Auto-update frame count boundary
+                const total = this.state.frames.length;
+                const finalCount = lastValid || total;
+
+                if (!this.state.frameCount || this.state.frameCount > total || this.state.frameCount === total) {
+                    this.state.frameCount = finalCount;
+                }
+
                 this.els.frameCountSlider.max = total;
                 this.els.frameCountVal.max = total;
                 this.els.frameCountSlider.value = this.state.frameCount;
@@ -997,15 +1008,37 @@
         async calculateIslandFrames() {
             const results = await this.findIslands(this.els.sourceCanvas, this.state.threshold);
             this.state.frames = results;
-            const total = this.state.frames.length;
-            if (!this.state.frameCount || this.state.frameCount > total) {
-                this.state.frameCount = total;
+
+            // Auto-trim: find last non-empty frame
+            let lastValid = 0;
+            for (let i = 0; i < this.state.frames.length; i++) {
+                if (!this.isFrameEmpty(this.state.frames[i])) {
+                    lastValid = i + 1;
+                }
             }
+
+            const total = this.state.frames.length;
+            const finalCount = lastValid || total;
+
+            if (!this.state.frameCount || this.state.frameCount > total || this.state.frameCount === total) {
+                this.state.frameCount = finalCount;
+            }
+
             this.els.frameCountSlider.max = total;
             this.els.frameCountVal.max = total;
             this.els.frameCountSlider.value = this.state.frameCount;
             this.els.frameCountVal.value = this.state.frameCount;
             this.drawOverlays();
+        }
+
+        isFrameEmpty(f) {
+            const ctx = this.els.sourceCanvas.getContext('2d');
+            const data = ctx.getImageData(f.x, f.y, f.w, f.h).data;
+            // Sample pixels to see if there's anything non-transparent
+            for (let i = 3; i < data.length; i += 4) {
+                if (data[i] > 10) return false; // Not empty if alpha > 10
+            }
+            return true;
         }
 
         async findIslands(canvas, threshold = 50) {
@@ -1075,6 +1108,7 @@
         }
 
         startPipLoop() {
+            let lastW = 0, lastH = 0;
             const loop = () => {
                 if (this.state.workflow !== 'studio' || !this.state.frames.length) {
                     requestAnimationFrame(loop);
@@ -1089,7 +1123,11 @@
                 const f = this.state.frames[this.state.activeFrameIdx];
                 if (f) {
                     const ctx = this.els.pipCanvas.getContext('2d');
-                    ctx.canvas.width = f.w; ctx.canvas.height = f.h;
+                    // Only resize if necessary to avoid flicker
+                    if (ctx.canvas.width !== f.w || ctx.canvas.height !== f.h) {
+                        ctx.canvas.width = f.w;
+                        ctx.canvas.height = f.h;
+                    }
                     ctx.clearRect(0, 0, f.w, f.h);
                     ctx.drawImage(this.els.sourceCanvas, f.x, f.y, f.w, f.h, 0, 0, f.w, f.h);
                 }

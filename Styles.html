@@ -61,6 +61,82 @@
         background-clip: text;
         -webkit-text-fill-color: transparent;
         margin: 0;
+        cursor: help;
+    }
+
+    .logo-help-group {
+        position: relative;
+        display: inline-block;
+    }
+
+    .help-popup-card {
+        position: absolute;
+        top: 130%;
+        left: 0;
+        width: 600px;
+        background: rgba(15, 15, 20, 0.95);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8), 0 0 20px rgba(142, 45, 226, 0.2);
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(10px);
+        transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+        pointer-events: none;
+    }
+
+    .logo-help-group:hover .help-popup-card {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+        pointer-events: auto;
+    }
+
+    .help-header {
+        font-size: 13px;
+        font-weight: 800;
+        color: var(--primary-light);
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--glass-border);
+    }
+
+    .help-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 20px;
+    }
+
+    .help-col h3 {
+        font-size: 11px;
+        color: var(--secondary);
+        text-transform: uppercase;
+        margin-bottom: 6px;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+    }
+
+    .help-col p {
+        font-size: 11px;
+        color: var(--text-dim);
+        line-height: 1.5;
+        margin-bottom: 12px;
+    }
+
+    .help-tip {
+        margin-top: 10px;
+        padding: 8px;
+        background: rgba(142, 45, 226, 0.1);
+        border-radius: 8px;
+        font-size: 10px;
+        color: var(--primary-light);
+        font-style: italic;
+        border-left: 2px solid var(--primary);
     }
 
     .glass-card {

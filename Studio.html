@@ -154,6 +154,10 @@
                 downloadBtn: id('download-sprite-btn')
             };
 
+            // Hidden Buffer for Double Buffering (Global instance)
+            this.els.bufferCanvas = document.createElement('canvas');
+            this.els.bufferCtx = this.els.bufferCanvas.getContext('2d', { willReadFrequently: true });
+
             // Helpers
             function id(name) { return document.getElementById(name); }
         }
@@ -414,7 +418,7 @@
                 this.setWorkflow('studio');
                 const img = await this.loadImage(this.state.mediaUrl);
                 this.state.media = img;
-                this.state.frameCount = 0; // Default
+                this.state.frameCount = 0;
                 this.setupStudio(img);
             }
 
@@ -459,9 +463,10 @@
             this.els.overlayCanvas.width = img.width;
             this.els.overlayCanvas.height = img.height;
 
-            // Hidden Buffer for Double Buffering
-            this.els.bufferCanvas = document.createElement('canvas');
-            this.els.bufferCtx = this.els.bufferCanvas.getContext('2d');
+            // Sync Buffer dimensions immediately
+            this.els.bufferCanvas.width = img.width;
+            this.els.bufferCanvas.height = img.height;
+            this.els.bufferCtx.drawImage(img, 0, 0);
 
             const ctx = this.els.sourceCanvas.getContext('2d');
             ctx.drawImage(img, 0, 0);
@@ -1046,7 +1051,14 @@
         isFrameEmpty(f) {
             const bctx = this.els.bufferCtx;
             const bcvs = this.els.bufferCanvas;
-            const data = bctx.getImageData(f.x, f.y, f.w, f.h).data;
+
+            // Safety check: ensure coordinates are within buffer bounds
+            const x = Math.max(0, Math.min(f.x, bcvs.width - 1));
+            const y = Math.max(0, Math.min(f.y, bcvs.height - 1));
+            const w = Math.max(1, Math.min(f.w, bcvs.width - x));
+            const h = Math.max(1, Math.min(f.h, bcvs.height - y));
+
+            const data = bctx.getImageData(x, y, w, h).data;
 
             // 1. Check for transparency first (classic empty frame)
             let hasAlpha = false;
@@ -1180,7 +1192,9 @@
                     }
                     ctx.clearRect(0, 0, f.w, f.h);
                     // Draw from BUFFER to avoid seeing intermediate clear states
-                    ctx.drawImage(this.els.bufferCanvas, f.x, f.y, f.w, f.h, 0, 0, f.w, f.h);
+                    if (this.els.bufferCanvas && this.els.bufferCanvas.width > 0) {
+                        ctx.drawImage(this.els.bufferCanvas, f.x, f.y, f.w, f.h, 0, 0, f.w, f.h);
+                    }
                 }
                 this.state.activeFrameIdx = (this.state.activeFrameIdx + 1) % totalFrames;
                 setTimeout(() => requestAnimationFrame(loop), 100);

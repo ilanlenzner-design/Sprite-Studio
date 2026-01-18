@@ -117,13 +117,22 @@
                                         <input type="range" id="grid-offset-y" class="studio-slider" min="0" max="2000"
                                             value="0">
                                     </div>
+                                </div>
+                                <!-- New Spacious Row for Frame Count -->
+                                <div class="control-row" style="margin-top:12px;">
                                     <div class="slider-group" id="frame-count-group">
-                                        <div class="slider-header"><span style="flex:1;">Loop Frame Count</span>
-                                            <div class="nudge-group">
-                                                <button class="nudge-btn" data-axis="f" data-dir="-1">-</button>
-                                                <input type="number" id="frame-count-val" class="slider-input"
-                                                    value="0">
-                                                <button class="nudge-btn" data-axis="f" data-dir="1">+</button>
+                                        <div class="slider-header">
+                                            <span style="flex:1;">Loop Frame Count</span>
+                                            <div style="display:flex; align-items:center; gap:8px;">
+                                                <button id="auto-trim-btn" class="btn btn-pro-outline"
+                                                    style="padding: 2px 8px; font-size: 9px; height: 24px; text-transform: none; letter-spacing: 0.5px;">Auto:
+                                                    ON</button>
+                                                <div class="nudge-group">
+                                                    <button class="nudge-btn" data-axis="f" data-dir="-1">-</button>
+                                                    <input type="number" id="frame-count-val" class="slider-input"
+                                                        value="0">
+                                                    <button class="nudge-btn" data-axis="f" data-dir="1">+</button>
+                                                </div>
                                             </div>
                                         </div>
                                         <input type="range" id="frame-count-slider" class="studio-slider" min="0"

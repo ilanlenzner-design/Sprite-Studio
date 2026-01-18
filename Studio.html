@@ -36,6 +36,7 @@
                 frames: [],
                 activeFrameIdx: 0,
                 isPlaying: false,
+                autoTrim: true,     // Default to Auto mode
 
                 // Adjustment State
                 adjustments: {
@@ -108,6 +109,7 @@
                 rowLabel: id('row-val'),
                 frameCountSlider: id('frame-count-slider'),
                 frameCountVal: id('frame-count-val'),
+                autoTrimBtn: id('auto-trim-btn'),
                 offX: id('grid-offset-x'),
                 offXLabel: id('offx-val'),
                 offY: id('grid-offset-y'),
@@ -201,7 +203,20 @@
                 this.els.frameCountVal.oninput = (e) => {
                     const val = parseInt(e.target.value) || 0;
                     this.state.frameCount = val;
+                    this.state.autoTrim = false; // Manual override
+                    this.updateAutoTrimUI();
                     if (this.els.frameCountSlider) this.els.frameCountSlider.value = val;
+                };
+            }
+
+            if (this.els.autoTrimBtn) {
+                this.els.autoTrimBtn.onclick = () => {
+                    this.state.autoTrim = !this.state.autoTrim;
+                    this.updateAutoTrimUI();
+                    if (this.state.autoTrim) {
+                        this.state.lastTarget = null; // Force refresh
+                        this.refresh();
+                    }
                 };
             }
 
@@ -356,6 +371,8 @@
                             break;
                         case 'f':
                             this.state.frameCount = Math.max(0, (this.state.frameCount || 0) + dir);
+                            this.state.autoTrim = false; // Manual override
+                            this.updateAutoTrimUI();
                             this.els.frameCountSlider.value = this.els.frameCountVal.value = this.state.frameCount;
                             break;
                     }
@@ -1009,8 +1026,14 @@
                 const total = this.state.frames.length;
                 const finalCount = lastValid || total;
 
-                if (!this.state.frameCount || this.state.frameCount > total || this.state.frameCount === total) {
+                // Threshold-based auto-detection logic
+                if (this.state.autoTrim) {
                     this.state.frameCount = finalCount;
+                    // Visual flair
+                    this.els.frameCountVal.classList.add('auto-updated');
+                    setTimeout(() => this.els.frameCountVal.classList.remove('auto-updated'), 500);
+                } else if (!this.state.frameCount || this.state.frameCount > total) {
+                    this.state.frameCount = total;
                 }
 
                 this.els.frameCountSlider.max = total;
@@ -1019,6 +1042,22 @@
                 this.els.frameCountVal.value = this.state.frameCount;
             } else {
                 this.calculateIslandFrames();
+            }
+        }
+
+        updateAutoTrimUI() {
+            if (!this.els.autoTrimBtn) return;
+            const btn = this.els.autoTrimBtn;
+            if (this.state.autoTrim) {
+                btn.textContent = "Auto: ON";
+                btn.classList.add('active');
+                btn.style.borderColor = 'var(--secondary)';
+                btn.style.color = 'var(--secondary)';
+            } else {
+                btn.textContent = "Auto: OFF";
+                btn.classList.remove('active');
+                btn.style.borderColor = 'var(--primary)';
+                btn.style.color = 'var(--text-dim)';
             }
         }
 

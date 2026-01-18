@@ -314,6 +314,31 @@
         color: var(--secondary);
     }
 
+    /* Auto-Trim Highlighting */
+    @keyframes pulse-cyan {
+        0% {
+            box-shadow: 0 0 0 0 rgba(0, 210, 255, 0.4);
+        }
+
+        70% {
+            box-shadow: 0 0 0 10px rgba(0, 210, 255, 0);
+        }
+
+        100% {
+            box-shadow: 0 0 0 0 rgba(0, 210, 255, 0);
+        }
+    }
+
+    .auto-updated {
+        animation: pulse-cyan 0.5s ease-out;
+        border-color: var(--secondary) !important;
+    }
+
+    #auto-trim-btn.active {
+        background: rgba(0, 210, 255, 0.1);
+        font-weight: 800;
+    }
+
     /* Action Footer */
     .action-footer {
         margin-top: auto;

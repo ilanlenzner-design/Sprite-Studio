@@ -459,6 +459,10 @@
             this.els.overlayCanvas.width = img.width;
             this.els.overlayCanvas.height = img.height;
 
+            // Hidden Buffer for Double Buffering
+            this.els.bufferCanvas = document.createElement('canvas');
+            this.els.bufferCtx = this.els.bufferCanvas.getContext('2d');
+
             const ctx = this.els.sourceCanvas.getContext('2d');
             ctx.drawImage(img, 0, 0);
 
@@ -633,45 +637,42 @@
             this.timers.adjustment = setTimeout(() => {
                 const adj = this.state.adjustments;
                 const img = this.state.media;
-                const ctx = this.els.sourceCanvas.getContext('2d');
+                const bcvs = this.els.bufferCanvas;
+                const bctx = this.els.bufferCtx;
 
                 // Handle rotation - adjust canvas size if needed
                 const rotation = adj.rotation || 0;
                 const isRotated90 = (rotation === 90 || rotation === 270);
 
                 if (isRotated90) {
-                    this.els.sourceCanvas.width = img.height;
-                    this.els.sourceCanvas.height = img.width;
-                    this.els.overlayCanvas.width = img.height;
-                    this.els.overlayCanvas.height = img.width;
+                    bcvs.width = img.height;
+                    bcvs.height = img.width;
                 } else {
-                    this.els.sourceCanvas.width = img.width;
-                    this.els.sourceCanvas.height = img.height;
-                    this.els.overlayCanvas.width = img.width;
-                    this.els.overlayCanvas.height = img.height;
+                    bcvs.width = img.width;
+                    bcvs.height = img.height;
                 }
 
-                // Clear and prepare
-                ctx.clearRect(0, 0, this.els.sourceCanvas.width, this.els.sourceCanvas.height);
+                // Clear and prepare buffer
+                bctx.clearRect(0, 0, bcvs.width, bcvs.height);
 
-                // Apply transformations
-                ctx.save();
-                ctx.translate(this.els.sourceCanvas.width / 2, this.els.sourceCanvas.height / 2);
+                // Apply transformations to buffer
+                bctx.save();
+                bctx.translate(bcvs.width / 2, bcvs.height / 2);
 
                 if (rotation) {
-                    ctx.rotate(rotation * Math.PI / 180);
+                    bctx.rotate(rotation * Math.PI / 180);
                 }
 
                 const scaleX = adj.flipH ? -1 : 1;
                 const scaleY = adj.flipV ? -1 : 1;
-                ctx.scale(scaleX, scaleY);
+                bctx.scale(scaleX, scaleY);
 
-                // Draw image centered
-                ctx.drawImage(img, -img.width / 2, -img.height / 2);
-                ctx.restore();
+                // Draw image centered on buffer
+                bctx.drawImage(img, -img.width / 2, -img.height / 2);
+                bctx.restore();
 
-                // Get image data for pixel-level adjustments
-                const imageData = ctx.getImageData(0, 0, this.els.sourceCanvas.width, this.els.sourceCanvas.height);
+                // Get image data from buffer for pixel-level adjustments
+                const imageData = bctx.getImageData(0, 0, bcvs.width, bcvs.height);
                 let data = imageData.data;
 
                 // 1. Background Removal Preview
@@ -737,7 +738,18 @@
                     data[i + 2] = Math.max(0, Math.min(255, b));
                 }
 
-                ctx.putImageData(imageData, 0, 0);
+                bctx.putImageData(imageData, 0, 0);
+
+                // Sync visible canvases with buffer
+                this.els.sourceCanvas.width = bcvs.width;
+                this.els.sourceCanvas.height = bcvs.height;
+                this.els.overlayCanvas.width = bcvs.width;
+                this.els.overlayCanvas.height = bcvs.height;
+
+                const ctx = this.els.sourceCanvas.getContext('2d');
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                ctx.drawImage(bcvs, 0, 0);
+
                 this.refresh();
             }, 50);
         }
@@ -1032,13 +1044,51 @@
         }
 
         isFrameEmpty(f) {
-            const ctx = this.els.sourceCanvas.getContext('2d');
-            const data = ctx.getImageData(f.x, f.y, f.w, f.h).data;
-            // Sample pixels to see if there's anything non-transparent
+            const bctx = this.els.bufferCtx;
+            const bcvs = this.els.bufferCanvas;
+            const data = bctx.getImageData(f.x, f.y, f.w, f.h).data;
+
+            // 1. Check for transparency first (classic empty frame)
+            let hasAlpha = false;
             for (let i = 3; i < data.length; i += 4) {
-                if (data[i] > 10) return false; // Not empty if alpha > 10
+                if (data[i] > 10) { // If any pixel has significant alpha, it's not empty
+                    hasAlpha = true;
+                    break;
+                }
             }
-            return true;
+            if (!hasAlpha) return true; // If all pixels are transparent, the frame is empty
+
+            // 2. Sample background color from corners of the entire sheet (if not already done)
+            if (!this.state.bgColor) {
+                const sheetData = bctx.getImageData(0, 0, bcvs.width, bcvs.height).data;
+                const samples = [
+                    [0, 0], [bcvs.width - 1, 0],
+                    [0, bcvs.height - 1], [bcvs.width - 1, bcvs.height - 1]
+                ];
+                let r = 0, g = 0, b = 0;
+                samples.forEach(([sx, sy]) => {
+                    const idx = (sy * bcvs.width + sx) * 4;
+                    r += sheetData[idx]; g += sheetData[idx + 1]; b += sheetData[idx + 2];
+                });
+                this.state.bgColor = { r: r / 4, g: g / 4, b: b / 4 };
+            }
+
+            // 3. Compare frame pixels to detected background color
+            const bgColor = this.state.bgColor;
+            const tolerance = 15; // Tolerance for color difference
+            for (let i = 0; i < data.length; i += 4) {
+                // Only consider non-transparent pixels for background color comparison
+                if (data[i + 3] > 10) {
+                    const dr = Math.abs(data[i] - bgColor.r);
+                    const dg = Math.abs(data[i + 1] - bgColor.g);
+                    const db = Math.abs(data[i + 2] - bgColor.b);
+                    if (dr > tolerance || dg > tolerance || db > tolerance) {
+                        return false; // Found a pixel significantly different from background
+                    }
+                }
+            }
+
+            return true; // All non-transparent pixels match background color within tolerance
         }
 
         async findIslands(canvas, threshold = 50) {
@@ -1080,7 +1130,7 @@
                     if ((island.maxX - island.minX) > 4) {
                         islands.push({
                             x: island.minX / SCALE, y: island.minY / SCALE,
-                            w: (island.maxX - island.minX + 1) / SCALE, h: (island.maxY - island.minY + 1) / SCALE
+                            w: (island.maxX - island.minX + 1) / SCALE, h: (island.maxY - island.maxY + 1) / SCALE
                         });
                     }
                 }
@@ -1129,7 +1179,8 @@
                         ctx.canvas.height = f.h;
                     }
                     ctx.clearRect(0, 0, f.w, f.h);
-                    ctx.drawImage(this.els.sourceCanvas, f.x, f.y, f.w, f.h, 0, 0, f.w, f.h);
+                    // Draw from BUFFER to avoid seeing intermediate clear states
+                    ctx.drawImage(this.els.bufferCanvas, f.x, f.y, f.w, f.h, 0, 0, f.w, f.h);
                 }
                 this.state.activeFrameIdx = (this.state.activeFrameIdx + 1) % totalFrames;
                 setTimeout(() => requestAnimationFrame(loop), 100);
